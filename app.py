@@ -4,6 +4,7 @@ from datetime import datetime
 import os
 
 app = Flask(__name__)
+handler = app
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
