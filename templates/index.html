@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-4xl font-bold text-center mb-8">HYPERMINDZ ADMIN PORTAL</h1>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <!-- Time Filter -->
+        <div>
+            <label for="timeFilter" class="block text-lg font-medium mb-2">Select Time Filter:</label>
+            <select id="timeFilter" class="p-2 border rounded w-full">
+                <option value="hour">Last Hour</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="week">Last Week</option>
+                <option value="month">Last Month</option>
+            </select>
+        </div>
+
+        <!-- Session ID Dropdown -->
+        <div>
+            <label for="sessionIdFilter" class="block text-lg font-medium mb-2">Session ID:</label>
+            <select id="sessionIdFilter" class="p-2 border rounded w-full">
+                <option value="all">All Session IDs</option>
+                <!-- Options will be populated dynamically -->
+            </select>
+        </div>
+
+        <!-- User ID Dropdown -->
+        <div>
+            <label for="userIdFilter" class="block text-lg font-medium mb-2">User  ID:</label>
+            <select id="userIdFilter" class="p-2 border rounded w-full">
+                <option value="all">All User IDs</option>
+                <!-- Options will be populated dynamically -->
+            </select>
+        </div>
+
+        <!-- Agent UUID Dropdown -->
+        <div>
+            <label for="agentUuidFilter" class="block text-lg font-medium mb-2">Agent UUID:</label>
+            <select id="agentUuidFilter" class="p-2 border rounded w-full">
+                <option value="all">All Agent UUIDs</option>
+                <!-- Options will be populated dynamically -->
+            </select>
+        </div>
+    </div>
+
+    <!-- Search Button -->
+    <div class="mb-6 text-center">
+        <button id="searchButton" class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition duration-200">Search</button>
+    </div>
+
+    <!-- Summary Stats -->
+    <div id="summaryStats" class="mb-6 p-4 bg-white rounded-lg shadow">
+        <h2 class="text-xl font-semibold">Summary Statistics</h2>
+        <div class="grid grid-cols-3 gap-4 mt-4">
+            <div class="bg-green-100 p-2 rounded">
+                <h3 class="font-medium">Completed</h3>
+                <p id="completedCount" class="text-lg font-bold">0</p>
+            </div>
+            <div class="bg-yellow-100 p-2 rounded">
+                <h3 class="font-medium">In Progress</h3>
+                <p id="inProgressCount" class="text-lg font-bold">0</p>
+            </div>
+            <div class="bg-red-100 p-2 rounded">
+                <h3 class="font-medium">Failed</h3>
+                <p id="failedCount" class="text-lg font-bold">0</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sessions List -->
+    <div id="sessionsList" class="space-y-4">
+        <!-- Sessions will be loaded here -->
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function loadFilterOptions(timeFilter) {
+    $.get(`/filter-options/${timeFilter}`, function(data) {
+        // Populate Session ID Dropdown
+        const sessionIdFilter = $('#sessionIdFilter');
+        sessionIdFilter.empty().append('<option value="all">All Session IDs</option>');
+        data.session_ids.forEach(id => {
+            sessionIdFilter.append(`<option value="${id}">${id}</option>`);
+        });
+
+        // Populate User ID Dropdown
+        const userIdFilter = $('#userIdFilter');
+        userIdFilter.empty().append('<option value="all">All User IDs</option>');
+        data.user_ids.forEach(id => {
+            userIdFilter.append(`<option value="${id}">${id}</option>`);
+        });
+
+        // Populate Agent UUID Dropdown
+        const agentUuidFilter = $('#agentUuidFilter');
+        agentUuidFilter.empty().append('<option value="all">All Agent UUIDs</option>');
+        data.agent_uuids.forEach(uuid => {
+            agentUuidFilter.append(`<option value="${uuid}">${uuid}</option>`);
+        });
+    });
+}
+
+function loadSessions(timeFilter, sessionId, userId, agentUuid) {
+    const url = `/sessions/${timeFilter}?session_id=${sessionId}&user_id=${userId}&agent_uuid=${agentUuid}`;
+    $.get(url, function(data) {
+        const sessionsList = $('#sessionsList');
+        sessionsList.empty();
+        
+        // Update summary statistics
+        $('#completedCount').text(data.summary.completed);
+        $('#inProgressCount').text(data.summary.in_progress);
+        $('#failedCount').text(data.summary.failed);
+        
+        data.sessions.forEach(session => {
+            const statusColor = getStatusColor(session.status);
+            
+            let sessionHtml = `
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold">
+                            <a href="/session/${session.session_id}" class="text-blue-500 hover:underline">Session: ${session.session_id}</a>
+                        </h2>
+                        <span class="px-3 py-1 rounded-full ${statusColor}">${session.status}</span>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h3 class="text-lg font-medium mb-2">Subagents:</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            `;
+            
+            session.subagents.forEach(subagent => {
+                const subagentStatusColor = getStatusColor(subagent.status);
+                sessionHtml += `
+                    <div class="border p-2 rounded">
+                        <div class="flex items-center justify-between">
+                            <span class="font-medium">${subagent.agent_name}</span>
+                            <span class="px-2 py-1 rounded-full ${subagentStatusColor} text-sm">
+                                ${subagent.status}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            sessionHtml += `
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            sessionsList.append(sessionHtml);
+        });
+    });
+}
+
+function getStatusColor(status) {
+    switch(status.toLowerCase()) {
+        case 'completed':
+            return 'bg-green-100 text-green-800';
+        case 'failed':
+            return 'bg-red-100 text-red-800';
+        case 'in_progress':
+            return 'bg-yellow-100 text-yellow-800';
+        default:
+            return 'bg-gray-100 text-gray-800';
+    }
+}
+
+$(document).ready(function() {
+    const initialTimeFilter = 'hour';
+    loadFilterOptions(initialTimeFilter);
+    loadSessions(initialTimeFilter, 'all', 'all', 'all');
+    
+    $('#timeFilter').change(function() {
+        const timeFilter = $(this).val();
+        loadFilterOptions(timeFilter);
+        loadSessions(timeFilter, 'all', 'all', 'all');
+    });
+
+    $('#searchButton').click(function() {
+        const timeFilter = $('#timeFilter').val();
+        const sessionId = $('#sessionIdFilter').val();
+        const userId = $('#userIdFilter').val();
+        const agentUuid = $('#agentUuidFilter').val();
+        loadSessions(timeFilter, sessionId, userId, agentUuid);
+    });
+});
+</script>
+{% endblock %}
