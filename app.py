@@ -4,7 +4,6 @@ from datetime import datetime
 import os
 
 app = Flask(__name__)
-handler = app
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
@@ -142,5 +141,5 @@ def session_view(session_id):
         return f"An unexpected error occurred: {str(e)}", 500
 
 
-def handler(event, context):
-    return app(event, context)
+if __name__ == '__main__':
+    app.run(debug=True)
