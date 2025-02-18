@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Session Details</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Session Header -->
+        <div class="flex flex-wrap items-center justify-between mb-8 bg-white rounded-lg shadow-sm p-6">
+            <div class="flex items-center space-x-6">
+                <!-- Back Button -->
+                <a href="/" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                    </svg>
+                </a>
+
+                <!-- Session ID -->
+                <h1 class="text-2xl font-bold text-gray-800">Session: {{ session_id }}</h1>
+
+                <!-- User ID -->
+                <div class="flex items-center space-x-2 text-gray-700 text-sm">
+                    <span>👤</span>
+                    <span class="font-medium">User ID:</span>
+                    <span class="text-gray-900">{{ status_summary.user_id|default('N/A') }}</span>
+                </div>
+
+                <!-- Agent UUID -->
+                <div class="flex items-center space-x-2 text-gray-700 text-sm">
+                    <span>🔗</span>
+                    <span class="font-medium">Agent UUID:</span>
+                    <span class="text-gray-900">{{ status_summary.agent_uuid|default('N/A') }}</span>
+                </div>
+
+                <!-- Status Badge -->
+                {% if status_summary and status_summary.status %}
+                    {% set status_data = {
+                        'in_progress': { 'color': 'bg-yellow-100 text-yellow-800', 'icon': '🕒' }, 
+                        'completed': { 'color': 'bg-green-100 text-green-800', 'icon': '✅' },
+                        'failed': { 'color': 'bg-red-100 text-red-800', 'icon': '❌' },
+                        'not_used': { 'color': 'bg-gray-100 text-gray-600', 'icon': '⭕' }
+                    } %}
+                    {% set current_status = status_data.get(status_summary.status|lower, status_data['not_used']) %}
+
+                    <span class="px-4 py-2 rounded-full text-sm font-semibold flex items-center space-x-2 {{ current_status.color }}">
+                        <span>{{ current_status.icon }}</span>
+                        <span>{{ status_summary.status }}</span>
+                    </span>
+                {% endif %}
+            </div>
+
+            <!-- Last Updated Timestamp -->
+            <div class="text-sm text-gray-500">
+                Last Updated: {% if status_summary %}{{ status_summary.update_timestamp|default('N/A') }}{% else %}N/A{% endif %}
+            </div>
+        </div>
+
+
+
+        <!-- Subagents Status -->
+        {% if status_summary.subagents %}
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Subagents Status</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for subagent in status_summary.subagents %}
+                <div class="border rounded-lg p-4 bg-gray-50 hover:shadow-lg transition-shadow duration-200">
+                    <div class="flex items-center justify-between">
+                        <!-- Left: Agent Name with Avatar -->
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 text-sm font-bold">
+                                {{ subagent.agent_name[:2]|upper }} 
+                            </div>
+                            <span class="font-medium text-gray-700">{{ subagent.agent_name }}</span>
+                        </div>
+
+                        <!-- Right: Status with Icons -->
+                        {% set subagent_status_data = {
+                            'in_progress': { 'color': 'bg-yellow-100 text-yellow-800', 'icon': '🕒' }, 
+                            'completed': { 'color': 'bg-green-100 text-green-800', 'icon': '✅' },
+                            'failed': { 'color': 'bg-red-100 text-red-800', 'icon': '❌' },
+                            'not_used': { 'color': 'bg-gray-100 text-gray-600', 'icon': '⭕' }
+                        } %}
+                        {% set current_status = subagent_status_data.get(subagent.status|lower, subagent_status_data['not_used']) %}
+
+                        <span class="flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-semibold {{ current_status.color }}">
+                            <span>{{ current_status.icon }}</span>
+                            <span>{{ subagent.status|default('Not Used') }}</span>
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+
+        <!-- Session Summary -->
+        {% if summary %}
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Session Summary</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                <div class="bg-blue-50 rounded-lg p-4">
+                    <div class="text-sm text-blue-600 mb-1">LLM Calls</div>
+                    <div class="text-2xl font-bold text-blue-800">{{ summary.llm_calls }}</div>
+                </div>
+                <div class="bg-purple-50 rounded-lg p-4">
+                    <div class="text-sm text-purple-600 mb-1">Tool Calls</div>
+                    <div class="text-2xl font-bold text-purple-800">{{ summary.tool_calls }}</div>
+                </div>
+                <div class="bg-green-50 rounded-lg p-4">
+                    <div class="text-sm text-green-600 mb-1">Actions</div>
+                    <div class="text-2xl font-bold text-green-800">{{ summary.actions }}</div>
+                </div>
+                <div class="bg-red-50 rounded-lg p-4">
+                    <div class="text-sm text-red-600 mb-1">Errors</div>
+                    <div class="text-2xl font-bold text-red-800">{{ summary.errors }}</div>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="text-sm text-gray-600 mb-1">Duration</div>
+                    <div class="text-2xl font-bold text-gray-800">{{ summary.duration }}</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="text-sm text-gray-600 mb-1">Cost</div>
+                    <div class="text-2xl font-bold text-gray-800">${{ summary.cost }}</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Performance Metrics Chart -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Performance Metrics</h2>
+            
+            <!-- Chart Container -->
+            <div class="relative" style="width: 100%; height: 300px;">
+                <canvas id="metricsChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Include Chart.js -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                // Get the canvas element
+                var ctx = document.getElementById("metricsChart").getContext("2d");
+
+                // Define the data from JSON response
+                var data = {
+                    labels: ["LLM Calls", "Tool Calls", "Errors", "Actions"],
+                    datasets: [{
+                        label: "Usage Metrics",
+                        data: [summary.llm_calls, summary.tool_calls, summary.errors, summary.actions], // Assuming `summary` is an object available in your JavaScript scope
+                        backgroundColor: ["#4F46E5", "#16A34A", "#DC2626", "#F59E0B"], // Colors for each bar
+                        borderColor: "#ffffff",
+                        borderWidth: 1
+                    }]
+                };
+
+
+                // Create the chart
+                new Chart(ctx, {
+                    type: "bar",
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true }
+                        },
+                        plugins: {
+                            legend: { display: false } // Hide legend since it's a single dataset
+                        }
+                    }
+                });
+            });
+        </script>
+
+
+        <!-- Event Filters -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Filter Events</h2>
+            <form method="GET" class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="subagent_id" class="block text-sm font-medium text-gray-700 mb-2">Subagent</label>
+                        <select name="subagent_id" id="subagent_id" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="">All Subagents</option>
+                            {% for subagent in subagents %}
+                                <option value="{{ subagent.subagent_id }}" {% if current_subagent == subagent.subagent_id %}selected{% endif %}>
+                                    {{ subagent.subagent_id }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="event_type" class="block text-sm font-medium text-gray-700 mb-2">Event Type</label>
+                        <select name="event_type" id="event_type" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="">All Event Types</option>
+                            {% for type in event_types %}
+                                <option value="{{ type }}" {% if current_event_type == type %}selected{% endif %}>
+                                    {{ type }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="flex space-x-4">
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                        Apply Filters
+                    </button>
+                    <a href="/session/{{ session_id }}" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors duration-200">
+                        Clear Filters
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Events List -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <h2 class="text-xl font-semibold mb-4">Events</h2>
+            <div class="space-y-4">
+                {% for event in events %}
+                <div class="border rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-lg font-medium text-gray-800">Event ID: {{ event.event_id }}</h3>
+                        <span class="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-700">{{ event.event_type }}</span>
+                    </div>
+                    <div class="text-sm text-gray-500 mb-2">
+                        <span class="mr-4">Subagent: {{ event.subagent_id }}</span>
+                        <span>Timestamp: {{ event.init_timestamp }}</span>
+                    </div>
+                    <pre class="bg-gray-50 p-4 rounded-lg overflow-x-auto"><code>{{ event.event_data | tojson(indent=2) }}</code></pre>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-submit form when filters change
+        document.getElementById('subagent_id').addEventListener('change', function() {
+            this.form.submit();
+        });
+        document.getElementById('event_type').addEventListener('change', function() {
+            this.form.submit();
+        });
+    </script>
+</body>
+</html>
