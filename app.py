@@ -113,18 +113,18 @@ def session_view(session_id):
         subagent_stats_response = requests.get(subagent_stats_url)
         subagent_stats = subagent_stats_response.json().get('stats', []) if subagent_stats_response.status_code == 200 else []
         
-        # # Fetch events with correct subagent_id parameter
-        # events_url = f"{API_BASE_URL}/v2/events/{session_id}"
-        # params = {}
-        # if subagent_id:
-        #     params['subagent_id'] = subagent_id  # This parameter name matches the API endpoint
-        # if event_type:
-        #     params['event_type'] = event_type
+        # Fetch events with correct subagent_id parameter
+        events_url = f"{API_BASE_URL}/v2/events/{session_id}"
+        params = {}
+        if subagent_id:
+            params['subagent_id'] = subagent_id  # This parameter name matches the API endpoint
+        if event_type:
+            params['event_type'] = event_type
             
-        # print(f"Fetching events from: {events_url}")
-        # print(f"With params: {params}")
-        # events_response = requests.get(events_url, params=params)
-        # events = events_response.json()['events'] if events_response.status_code == 200 else []
+        print(f"Fetching events from: {events_url}")
+        print(f"With params: {params}")
+        events_response = requests.get(events_url, params=params)
+        events = events_response.json()['events'] if events_response.status_code == 200 else []
         
         # Get unique event types
         event_types = {event['event_type'] for event in events if event['event_type']}
