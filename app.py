@@ -80,10 +80,16 @@ def session_view(session_id):
     try:
         print(f"\n--- Debug Info for Session {session_id} ---")
         # Fetch session_status summary
-        status_summary_url = f"{API_BASE_URL}/v2/session/{session_id}"
+        status_summary_url = f"{API_BASE_URL}/v2/status/{session_id}"
         print(f"Fetching status_summary from: {status_summary_url}")
         status_summary_response = requests.get(status_summary_url)
         status_summary = status_summary_response.json()['session'] if status_summary_response.status_code == 200 else None
+
+        # Fetch event stats
+        event_stats_url = f"{API_BASE_URL}/v2/session-stats/{session_id}"
+        print(f"Fetching status_summary from: {event_stats_url}")
+        event_stats_response = requests.get(event_stats_url)
+        event_stats = event_stats_response.json()['stats'] if event_stats_response.status_code == 200 else None
         
         # Fetch session summary
         summary_url = f"{API_BASE_URL}/v2/session_summary/{session_id}"
@@ -100,6 +106,12 @@ def session_view(session_id):
         print(f"Fetching subagents from: {subagents_url}")
         subagents_response = requests.get(subagents_url)
         subagents = subagents_response.json()['subagents'] if subagents_response.status_code == 200 else []
+
+        # Fetch subagent statistics
+        subagent_stats_url = f"{API_BASE_URL}/v2/subagent-stats/{session_id}"
+        print(f"Fetching subagent stats from: {subagent_stats_url}")
+        subagent_stats_response = requests.get(subagent_stats_url)
+        subagent_stats = subagent_stats_response.json().get('stats', []) if subagent_stats_response.status_code == 200 else []
         
         # Fetch events with correct subagent_id parameter
         events_url = f"{API_BASE_URL}/v2/events/{session_id}"
@@ -122,9 +134,14 @@ def session_view(session_id):
         print(f"Events Count: {len(events)}")
         print(f"Subagents Count: {len(subagents)}")
         print(f"Event Types: {event_types}")
+        print(f"status_summary: {status_summary}")
+        print(f"subagent_stats: {subagent_stats}")
         
+
         return render_template('session.html',
                              status_summary=status_summary,
+                             subagent_stats=subagent_stats,
+                             event_stats=event_stats,
                              summary=summary,
                              events=events,
                              session_id=session_id,

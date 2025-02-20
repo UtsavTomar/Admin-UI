@@ -65,10 +65,10 @@
         {% if status_summary.subagents %}
         <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">Subagents Status</h2>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {% for subagent in status_summary.subagents %}
-                <div class="border rounded-lg p-4 bg-gray-50 hover:shadow-lg transition-shadow duration-200">
+                <div class="relative border rounded-lg p-4 bg-gray-50 hover:shadow-xl transition-shadow duration-300 group">
                     <div class="flex items-center justify-between">
                         <!-- Left: Agent Name with Avatar -->
                         <div class="flex items-center space-x-3">
@@ -92,41 +92,108 @@
                             <span>{{ subagent.status|default('Not Used') }}</span>
                         </span>
                     </div>
+
+                    <!-- Hover Box with Detailed Stats -->
+                    <div class="absolute left-1/2 transform -translate-x-1/2 top-full mt-4 bg-white shadow-2xl rounded-lg p-6 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-300 ease-out z-10 w-96 border border-gray-200">
+                        <!-- Arrow Indicator -->
+                        <div class="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-4 bg-white rotate-45 border-t border-l border-gray-200"></div>
+
+                        <!-- Subagent Name as Title -->
+                        <h3 class="text-lg font-semibold text-gray-800 text-center">{{ subagent.agent_name }} Summary</h3>
+                        <hr class="my-2 border-gray-300">
+
+                        {% set stats = subagent_stats | selectattr("subagent_id", "equalto", subagent.agent_id) | list | first %}
+                        
+                        {% if stats %}
+                        <div class="text-sm text-gray-600 space-y-2">
+                            <p><strong>Total Events:</strong> {{ stats.total_events }}</p>
+                            <p><strong>Total Time Taken:</strong> {{ stats.total_time_taken }}s</p>
+                            <p><strong>LLM Calls:</strong> {{ stats.total_llm_calls }}</p>
+                            <p><strong>LLM Time:</strong> {{ stats.total_llm_time }}s</p>
+                            <p><strong>Tool Calls:</strong> {{ stats.total_tool_calls }}</p>
+                            <p><strong>Tool Time:</strong> {{ stats.total_tool_time }}s</p>
+                        </div>
+
+                        <!-- Graph Section -->
+                        <div class="mt-4">
+                            <canvas id="chart-{{ subagent.subagent_id }}" width="100" height="50"></canvas>
+                        </div>
+                        {% else %}
+                        <p class="text-sm text-gray-600 text-center mt-2">No statistics available.</p>
+                        {% endif %}
+                    </div>
                 </div>
                 {% endfor %}
             </div>
         </div>
         {% endif %}
 
+        <script>
+            document.addEventListener("DOMContentLoaded", function () {
+                {% for subagent in status_summary.subagents %}
+                var ctx = document.getElementById("chart-{{ subagent.subagent_id }}").getContext("2d");
+
+                {% set stats = subagent_stats | selectattr("subagent_id", "equalto", subagent.agent_id) | list | first %}
+                {% if stats %}
+                new Chart(ctx, {
+                    type: "bar",
+                    data: {
+                        labels: ["LLM Calls", "Tool Calls"],
+                        datasets: [{
+                            label: "Number of Calls",
+                            data: [{{ stats.total_llm_calls }}, {{ stats.total_tool_calls }}],
+                            backgroundColor: ["#4CAF50", "#FF9800"],
+                            borderRadius: 5
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true }
+                        }
+                    }
+                });
+                {% endif %}
+                {% endfor %}
+            });
+        </script>
+
+
+
+
+
+        <!-- Include Chart.js -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
         <!-- Session Summary -->
         {% if summary %}
-        <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
-            <h2 class="text-xl font-semibold mb-4">Session Summary</h2>
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Session Summary</h2>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-                <div class="bg-blue-50 rounded-lg p-4">
+                <div class="bg-blue-50 rounded-lg p-4 text-center">
                     <div class="text-sm text-blue-600 mb-1">LLM Calls</div>
                     <div class="text-2xl font-bold text-blue-800">{{ summary.llm_calls }}</div>
                 </div>
-                <div class="bg-purple-50 rounded-lg p-4">
+                <div class="bg-purple-50 rounded-lg p-4 text-center">
                     <div class="text-sm text-purple-600 mb-1">Tool Calls</div>
                     <div class="text-2xl font-bold text-purple-800">{{ summary.tool_calls }}</div>
                 </div>
-                <div class="bg-green-50 rounded-lg p-4">
+                <div class="bg-green-50 rounded-lg p-4 text-center">
                     <div class="text-sm text-green-600 mb-1">Actions</div>
                     <div class="text-2xl font-bold text-green-800">{{ summary.actions }}</div>
                 </div>
-                <div class="bg-red-50 rounded-lg p-4">
+                <div class="bg-red-50 rounded-lg p-4 text-center">
                     <div class="text-sm text-red-600 mb-1">Errors</div>
                     <div class="text-2xl font-bold text-red-800">{{ summary.errors }}</div>
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                <div class="bg-gray-50 rounded-lg p-4">
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
                     <div class="text-sm text-gray-600 mb-1">Duration</div>
                     <div class="text-2xl font-bold text-gray-800">{{ summary.duration }}</div>
                 </div>
-                <div class="bg-gray-50 rounded-lg p-4">
+                <div class="bg-gray-50 rounded-lg p-4 text-center">
                     <div class="text-sm text-gray-600 mb-1">Cost</div>
                     <div class="text-2xl font-bold text-gray-800">${{ summary.cost }}</div>
                 </div>
@@ -135,91 +202,130 @@
         {% endif %}
 
         <!-- Performance Metrics Chart -->
-        <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
             <h2 class="text-xl font-semibold text-gray-800 mb-4">Performance Metrics</h2>
-            
-            <!-- Chart Container -->
             <div class="relative" style="width: 100%; height: 300px;">
                 <canvas id="metricsChart"></canvas>
             </div>
         </div>
 
-        <!-- Include Chart.js -->
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <!-- Event Charts Row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- Event Time Distribution Chart -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Event Time Distribution</h2>
+                <div class="relative" style="width: 100%; height: 250px;">
+                    <canvas id="eventTimeChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Event Types Chart -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-lg font-semibold text-gray-800 mb-4">Event Types</h2>
+                <div class="relative" style="width: 100%; height: 250px;">
+                    <canvas id="eventTypeChart"></canvas>
+                </div>
+            </div>
+        </div>
 
         <script>
             document.addEventListener("DOMContentLoaded", function () {
-                // Get the canvas element
-                var ctx = document.getElementById("metricsChart").getContext("2d");
+                // Get the context for each chart
+                var ctxMetrics = document.getElementById("metricsChart").getContext("2d");
+                var ctxEventTime = document.getElementById("eventTimeChart").getContext("2d");
+                var ctxEventType = document.getElementById("eventTypeChart").getContext("2d");
 
-                // Define the data from JSON response
-                var data = {
+                // Data for Performance Metrics
+                var metricsData = {
                     labels: ["LLM Calls", "Tool Calls", "Errors", "Actions"],
                     datasets: [{
                         label: "Usage Metrics",
-                        data: [summary.llm_calls, summary.tool_calls, summary.errors, summary.actions], // Assuming `summary` is an object available in your JavaScript scope
-                        backgroundColor: ["#4F46E5", "#16A34A", "#DC2626", "#F59E0B"], // Colors for each bar
-                        borderColor: "#ffffff",
+                        data: [{{ summary.llm_calls }}, {{ summary.tool_calls }}, {{ summary.errors }}, {{ summary.actions }}],
+                        backgroundColor: ["#4F46E5", "#16A34A", "#DC2626", "#F59E0B"],
                         borderWidth: 1
                     }]
                 };
 
+                // Data for Event Time Distribution
+                var eventTimeData = {
+                    labels: ["total_llm_time", "total_tool_time"],
+                    datasets: [{
+                        label: "Events",
+                        data: [{{ event_stats.total_llm_time }}, {{ event_stats.total_tool_time }}], // Replace with actual values
+                        backgroundColor: "#6366F1",
+                        borderWidth: 1
+                    }]
+                };
 
-                // Create the chart
-                new Chart(ctx, {
-                    type: "bar",
-                    data: data,
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: { beginAtZero: true }
-                        },
-                        plugins: {
-                            legend: { display: false } // Hide legend since it's a single dataset
-                        }
+                // Data for Event Types
+                var eventTypeData = {
+                    labels: ["llms", "tools"],
+                    datasets: [{
+                        label: "Count",
+                        data: [{{ event_stats.total_llm_calls }}, {{ event_stats.total_tool_calls }}], // Replace with actual values
+                        backgroundColor: "#6366F1",
+                        borderWidth: 1
+                    }]
+                };
+
+                // Common chart options
+                var chartOptions = {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true }
+                    },
+                    plugins: {
+                        legend: { display: false }
                     }
-                });
+                };
+
+                // Create Charts
+                new Chart(ctxMetrics, { type: "bar", data: metricsData, options: chartOptions });
+                new Chart(ctxEventTime, { type: "bar", data: eventTimeData, options: chartOptions });
+                new Chart(ctxEventType, { type: "bar", data: eventTypeData, options: chartOptions });
             });
         </script>
+
 
 
         <!-- Event Filters -->
         <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
             <h2 class="text-xl font-semibold mb-4">Filter Events</h2>
-            <form method="GET" class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label for="subagent_id" class="block text-sm font-medium text-gray-700 mb-2">Subagent</label>
-                        <select name="subagent_id" id="subagent_id" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            <option value="">All Subagents</option>
-                            {% for subagent in subagents %}
-                                <option value="{{ subagent.subagent_id }}" {% if current_subagent == subagent.subagent_id %}selected{% endif %}>
-                                    {{ subagent.subagent_id }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div>
-                        <label for="event_type" class="block text-sm font-medium text-gray-700 mb-2">Event Type</label>
-                        <select name="event_type" id="event_type" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            <option value="">All Event Types</option>
-                            {% for type in event_types %}
-                                <option value="{{ type }}" {% if current_event_type == type %}selected{% endif %}>
-                                    {{ type }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-                <div class="flex space-x-4">
-                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200">
-                        Apply Filters
-                    </button>
-                    <a href="/session/{{ session_id }}" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors duration-200">
-                        Clear Filters
+            <div class="mb-4">
+                <h3 class="text-sm font-medium text-gray-700 mb-2">Select Subagent</h3>
+                <div class="flex flex-wrap gap-2">
+                    <a href="?subagent_id=" class="px-4 py-2 rounded-lg border {% if not current_subagent %}bg-blue-600 text-white{% else %}bg-gray-200{% endif %} hover:bg-blue-500 hover:text-white">
+                        All Subagents
                     </a>
+                    {% for subagent in subagents %}
+                        <a href="?subagent_id={{ subagent.subagent_id }}" 
+                        class="px-4 py-2 rounded-lg border {% if current_subagent == subagent.subagent_id %}bg-blue-600 text-white{% else %}bg-gray-200{% endif %} hover:bg-blue-500 hover:text-white">
+                            {{ subagent.subagent_id }}
+                        </a>
+                    {% endfor %}
                 </div>
+            </div>
+            
+            <form method="GET" class="space-y-4">
+                <input type="hidden" name="subagent_id" value="{{ current_subagent }}">
+                <div>
+                    <label for="event_type" class="block text-sm font-medium text-gray-700 mb-2">Event Type</label>
+                    <select name="event_type" id="event_type" class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">All Event Types</option>
+                        {% for type in event_types %}
+                            <option value="{{ type }}" {% if current_event_type == type %}selected{% endif %}>
+                                {{ type }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200">
+                    Apply Filters
+                </button>
+                <a href="/session/{{ session_id }}" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors duration-200">
+                    Clear Filters
+                </a>
             </form>
         </div>
 
@@ -242,16 +348,6 @@
                 {% endfor %}
             </div>
         </div>
-    </div>
 
-    <script>
-        // Auto-submit form when filters change
-        document.getElementById('subagent_id').addEventListener('change', function() {
-            this.form.submit();
-        });
-        document.getElementById('event_type').addEventListener('change', function() {
-            this.form.submit();
-        });
-    </script>
 </body>
 </html>
