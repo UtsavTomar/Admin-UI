@@ -26,21 +26,21 @@
                 <div class="flex items-center space-x-2 text-gray-700 text-sm">
                     <span>👤</span>
                     <span class="font-medium">User ID:</span>
-                    <span class="text-gray-900">{{ status_summary.user_id|default('N/A') }}</span>
+                    <span class="text-gray-900">{{ summary.user_id|default('N/A') }}</span>
                 </div>
                 
                 <!-- Agent UUID -->
                 <div class="flex items-center space-x-2 text-gray-700 text-sm">
                     <span>🔗</span>
                     <span class="font-medium">Agent UUID:</span>
-                    <span class="text-gray-900">{{ status_summary.agent_uuid|default('N/A') }}</span>
+                    <span class="text-gray-900">{{ summary.agent_uuid|default('N/A') }}</span>
                 </div>
                 
                 <!-- Agent Version -->
                 <div class="flex items-center space-x-2 text-gray-700 text-sm">
                     <span>🔗</span>
                     <span class="font-medium">Agent Version:</span>
-                    <span class="text-gray-900">{{ status_summary.version|default('N/A') }}</span>
+                    <span class="text-gray-900">{{ summary.version|default('N/A') }}</span>
                 </div>
 
                 <!-- Status Badge -->
