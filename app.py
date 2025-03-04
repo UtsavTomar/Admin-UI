@@ -1,9 +1,41 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session
 import requests
-from datetime import datetime
 import os
+from clerk import Clerk
 
 app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY", "your_secret_key")  # Set a secret key for session management
+
+# Initialize Clerk
+clerk = Clerk(api_key=os.getenv("CLERK_API_KEY"))
+
+# Route for authentication page
+@app.route('/auth')
+def auth():
+    return render_template('auth.html')
+
+# Route to handle authentication
+@app.route('/auth', methods=['POST'])
+def handle_auth():
+    data = request.json
+    email = data.get('email')
+    password = data.get('password')
+
+    try:
+        # Use Clerk's API to authenticate the user
+        user = clerk.authenticate(email=email, password=password)
+
+        # Store user information in session
+        session['user_id'] = user['id']
+        return {"message": "Authentication successful"}, 200
+    except Exception as e:
+        return {"message": str(e)}, 400
+
+# Route to log out
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    return redirect(url_for('index'))
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
