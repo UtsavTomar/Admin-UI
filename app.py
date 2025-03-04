@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 import requests
 import os
-from clerk import Clerk
+from clerk_backend_api import Clerk
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "your_secret_key")  # Set a secret key for session management
