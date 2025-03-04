@@ -7,7 +7,7 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "your_secret_key")  # Set a secret key for session management
 
 # Initialize Clerk
-clerk = Clerk(api_key=os.getenv("CLERK_API_KEY"))
+clerk = Clerk()
 
 # Route for authentication page
 @app.route('/auth')
