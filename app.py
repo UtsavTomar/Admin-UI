@@ -2,6 +2,8 @@ from flask import Flask, render_template, request, redirect, url_for, session
 import requests
 import os
 from clerk_backend_api import Clerk
+from functools import wraps
+from flask import redirect, url_for, session
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "your_secret_key")  # Set a secret key for session management
@@ -39,11 +41,21 @@ def logout():
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('auth'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 @app.route('/')
+@login_required
 def index():
     return render_template('index.html')
 
 @app.route('/sessions/<time_filter>')
+@login_required
 def get_filtered_sessions(time_filter):
     try:
         # Get additional filter parameters from the request
@@ -108,6 +120,7 @@ def session_redirect():
     return redirect(url_for('index'))
 
 @app.route('/session/<session_id>')
+@login_required
 def session_view(session_id):
     try:
         print(f"\n--- Debug Info for Session {session_id} ---")
