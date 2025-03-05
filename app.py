@@ -1,61 +1,17 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for
 import requests
+from datetime import datetime
 import os
-from clerk_backend_api import Clerk
-from functools import wraps
-from flask import redirect, url_for, session
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "your_secret_key")  # Set a secret key for session management
-
-# Initialize Clerk
-clerk = Clerk()
-
-# Route for authentication page
-@app.route('/auth')
-def auth():
-    return render_template('auth.html')
-
-# Route to handle authentication
-@app.route('/auth', methods=['POST'])
-def handle_auth():
-    data = request.json
-    email = data.get('email')
-    password = data.get('password')
-
-    try:
-        # Use Clerk's API to authenticate the user
-        user = clerk.authenticate(email=email, password=password)
-
-        # Store user information in session
-        session['user_id'] = user['id']
-        return {"message": "Authentication successful"}, 200
-    except Exception as e:
-        return {"message": str(e)}, 400
-
-# Route to log out
-@app.route('/logout')
-def logout():
-    session.pop('user_id', None)
-    return redirect(url_for('index'))
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            return redirect(url_for('auth'))
-        return f(*args, **kwargs)
-    return decorated_function
-
 @app.route('/')
-@login_required
 def index():
     return render_template('index.html')
 
 @app.route('/sessions/<time_filter>')
-@login_required
 def get_filtered_sessions(time_filter):
     try:
         # Get additional filter parameters from the request
@@ -120,7 +76,6 @@ def session_redirect():
     return redirect(url_for('index'))
 
 @app.route('/session/<session_id>')
-@login_required
 def session_view(session_id):
     try:
         print(f"\n--- Debug Info for Session {session_id} ---")
