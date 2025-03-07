@@ -3,7 +3,7 @@ import requests
 from datetime import datetime
 import os
 from functools import wraps
-from .jwt_token import get_clerk_sign_token_for_user
+from jwt_token import get_clerk_sign_token_for_user
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY")
