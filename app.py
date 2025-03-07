@@ -1,17 +1,88 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 import requests
 from datetime import datetime
 import os
+from functools import wraps
+from .jwt_token import get_clerk_sign_token_for_user
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY")
+CLERK_SECRET_KEY = os.environ.get("CLERK_SECRET_KEY")
+ORGANIZATION_ID = os.environ.get("ORGANIZATION_ID")
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+CLERK_API_BASE = "https://api.clerk.com/v1"
+
+# Authentication decorator
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'authenticated' not in session or not session['authenticated']:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def check_organization_membership(user_id):
+    """Check if the user belongs to the specified organization."""
+    url = f"{CLERK_API_BASE}/users/{user_id}/organization_memberships"
+    headers = {
+        "Authorization": f"Bearer {CLERK_SECRET_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        
+        # Check if the user belongs to any organization
+        if data['total_count'] == 0:
+            return False
+            
+        # Check if the user belongs to the specific organization
+        for membership in data['data']:
+            if ORGANIZATION_ID == membership['organization'].get('id'):
+                return True
+                
+        return False
+    except Exception as e:
+        print(f"Error checking organization membership: {e}")
+        return False
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        user_id = request.form.get('user_id')
+        
+        if not user_id:
+            flash('Please provide a User ID', 'error')
+            return render_template('login.html')
+        
+        if check_organization_membership(user_id):
+            session['authenticated'] = True
+            session['user_id'] = user_id
+            # Generate Clerk Sign Token and store in session
+            session['clerk_token'] = get_clerk_sign_token_for_user(user_id)
+            flash('Login successful!', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('You are not authorized to access this application. Please contact your administrator.', 'error')
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash('You have been logged out', 'info')
+    return redirect(url_for('login'))
 
 @app.route('/')
+@login_required
 def index():
     return render_template('index.html')
 
 @app.route('/sessions/<time_filter>')
+@login_required
 def get_filtered_sessions(time_filter):
     try:
         # Get additional filter parameters from the request
@@ -28,7 +99,11 @@ def get_filtered_sessions(time_filter):
         if agent_uuid and agent_uuid != "all":
             params['agent_uuid'] = agent_uuid
 
-        response = requests.get(f"{API_BASE_URL}/v2/sessions", params=params)
+        session['clerk_token']= get_clerk_sign_token_for_user(session['user_id'])
+        auth_token = session['clerk_token']
+        headers = {"Authorization": f"Bearer {auth_token}"}
+
+        response = requests.get(f"{API_BASE_URL}/v2/sessions", params=params, headers=headers)
         data = response.json()
         
         # Calculate summary statistics
@@ -48,9 +123,14 @@ def get_filtered_sessions(time_filter):
         return {"error": str(e)}, 500
 
 @app.route('/filter-options/<time_filter>')
+@login_required
 def get_filter_options(time_filter):
     try:
-        response = requests.get(f"{API_BASE_URL}/v2/sessions", params={"time_filter": time_filter})
+        session['clerk_token']= get_clerk_sign_token_for_user(session['user_id'])
+        auth_token = session['clerk_token']
+        headers = {"Authorization": f"Bearer {auth_token}"}
+
+        response = requests.get(f"{API_BASE_URL}/v2/sessions", params={"time_filter": time_filter}, headers=headers)
         data = response.json()
 
         # Extract unique session_ids, user_ids, and agent_uuids
@@ -69,6 +149,7 @@ def get_filter_options(time_filter):
 #2nd Page
 
 @app.route('/session')
+@login_required
 def session_redirect():
     session_id = request.args.get('session_id')
     if session_id:
@@ -76,25 +157,35 @@ def session_redirect():
     return redirect(url_for('index'))
 
 @app.route('/session/<session_id>')
+@login_required
 def session_view(session_id):
     try:
         print(f"\n--- Debug Info for Session {session_id} ---")
         # Fetch session_status summary
+        session['clerk_token']= get_clerk_sign_token_for_user(session['user_id'])
+        auth_token = session['clerk_token']
+        headers = {"Authorization": f"Bearer {auth_token}"}
         status_summary_url = f"{API_BASE_URL}/v2/status/{session_id}"
         print(f"Fetching status_summary from: {status_summary_url}")
-        status_summary_response = requests.get(status_summary_url)
+        status_summary_response = requests.get(status_summary_url,headers=headers)
         status_summary = status_summary_response.json()['session'] if status_summary_response.status_code == 200 else None
 
         # Fetch event stats
+        session['clerk_token']= get_clerk_sign_token_for_user(session['user_id'])
+        auth_token = session['clerk_token']
+        headers = {"Authorization": f"Bearer {auth_token}"}
         event_stats_url = f"{API_BASE_URL}/v2/session-stats/{session_id}"
         print(f"Fetching status_summary from: {event_stats_url}")
-        event_stats_response = requests.get(event_stats_url)
+        event_stats_response = requests.get(event_stats_url,headers=headers)
         event_stats = event_stats_response.json()['stats'] if event_stats_response.status_code == 200 else None
         
         # Fetch session summary
+        session['clerk_token']= get_clerk_sign_token_for_user(session['user_id'])
+        auth_token = session['clerk_token']
+        headers = {"Authorization": f"Bearer {auth_token}"}
         summary_url = f"{API_BASE_URL}/v2/session_summary/{session_id}"
         print(f"Fetching summary from: {summary_url}")
-        summary_response = requests.get(summary_url)
+        summary_response = requests.get(summary_url,headers=headers)
         summary = summary_response.json()['summary'] if summary_response.status_code == 200 else None
         
         # Get filter parameters using correct field name
@@ -102,15 +193,21 @@ def session_view(session_id):
         event_type = request.args.get('event_type')
         
         # Fetch subagents (endpoint now returns correct subagent_id)
+        session['clerk_token']= get_clerk_sign_token_for_user(session['user_id'])
+        auth_token = session['clerk_token']
+        headers = {"Authorization": f"Bearer {auth_token}"}
         subagents_url = f"{API_BASE_URL}/v2/subagents/{session_id}"
         print(f"Fetching subagents from: {subagents_url}")
-        subagents_response = requests.get(subagents_url)
+        subagents_response = requests.get(subagents_url,headers=headers)
         subagents = subagents_response.json()['subagents'] if subagents_response.status_code == 200 else []
 
         # Fetch subagent statistics
+        session['clerk_token']= get_clerk_sign_token_for_user(session['user_id'])
+        auth_token = session['clerk_token']
+        headers = {"Authorization": f"Bearer {auth_token}"}
         subagent_stats_url = f"{API_BASE_URL}/v2/subagent-stats/{session_id}"
         print(f"Fetching subagent stats from: {subagent_stats_url}")
-        subagent_stats_response = requests.get(subagent_stats_url)
+        subagent_stats_response = requests.get(subagent_stats_url,headers=headers)
         subagent_stats = subagent_stats_response.json().get('stats', []) if subagent_stats_response.status_code == 200 else []
         
         # Fetch events with correct subagent_id parameter
@@ -122,8 +219,11 @@ def session_view(session_id):
             params['event_type'] = event_type
             
         print(f"Fetching events from: {events_url}")
+        session['clerk_token']= get_clerk_sign_token_for_user(session['user_id'])
+        auth_token = session['clerk_token']
+        headers = {"Authorization": f"Bearer {auth_token}"}
         print(f"With params: {params}")
-        events_response = requests.get(events_url, params=params)
+        events_response = requests.get(events_url, params=params, headers=headers)
         events = events_response.json()['events'] if events_response.status_code == 200 else []
         
         # Get unique event types

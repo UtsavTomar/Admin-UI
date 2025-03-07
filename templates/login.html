@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block extra_head %}
+<style>
+    .auth-card {
+        max-width: 480px;
+        transition: all 0.3s ease;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    .auth-card:hover {
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+    .logo-container {
+        width: 120px;
+        height: 120px;
+        margin: 0 auto 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9999px;
+        background-color: rgba(37, 99, 235, 0.1);
+    }
+    .form-input {
+        transition: border-color 0.15s ease-in-out;
+    }
+    .form-input:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+    }
+    .auth-btn {
+        transition: all 0.2s ease;
+    }
+    .auth-btn:hover {
+        transform: translateY(-1px);
+    }
+    .flash-message {
+        animation: fadeInOut 5s ease-in-out;
+    }
+    @keyframes fadeInOut {
+        0% { opacity: 0; transform: translateY(-10px); }
+        10% { opacity: 1; transform: translateY(0); }
+        90% { opacity: 1; transform: translateY(0); }
+        100% { opacity: 0; transform: translateY(-10px); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center">
+    <div class="auth-card bg-white rounded-xl p-8 w-full">
+        <!-- Logo/Icon -->
+        <div class="logo-container">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+        </div>
+        
+        <!-- Title -->
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-2">HYPERMINDZ</h1>
+        <h2 class="text-xl text-center text-gray-600 mb-6">Admin Portal Login</h2>
+        
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    {% set bg_color = "bg-blue-100 text-blue-800" %}
+                    {% if category == "error" %}
+                        {% set bg_color = "bg-red-100 text-red-800" %}
+                    {% elif category == "success" %}
+                        {% set bg_color = "bg-green-100 text-green-800" %}
+                    {% elif category == "info" %}
+                        {% set bg_color = "bg-gray-100 text-gray-800" %}
+                    {% endif %}
+                    <div class="flash-message mb-6 p-4 rounded-lg {{ bg_color }} flex items-center justify-between">
+                        <span>{{ message }}</span>
+                        <button onclick="this.parentElement.style.display='none'" class="focus:outline-none">
+                            <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                            </svg>
+                        </button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <!-- Login Form -->
+        <form method="post" action="{{ url_for('login') }}" class="space-y-6">
+            <!-- User ID Input -->
+            <div>
+                <label for="user_id" class="block text-sm font-medium text-gray-700 mb-1">User ID</label>
+                <input 
+                    type="text" 
+                    id="user_id" 
+                    name="user_id" 
+                    class="form-input w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-800" 
+                    placeholder="Enter your user ID" 
+                    required 
+                    autofocus
+                >
+            </div>
+            
+            <!-- Login Button -->
+            <div>
+                <button 
+                    type="submit" 
+                    class="auth-btn w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                >
+                    Sign In
+                </button>
+            </div>
+        </form>
+        
+        <!-- Info Text -->
+        <div class="mt-8 text-center text-sm text-gray-600">
+            <p>Access is restricted to authorized organization members.</p>
+            <p class="mt-2">Contact your administrator if you need assistance.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
